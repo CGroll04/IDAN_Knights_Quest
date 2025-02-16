@@ -1,0 +1,35 @@
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+
+#define BUTTON_PIN 10  // Button is connected to digital pin 10
+
+Adafruit_MPU6050 mpu;
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);  // Internal pull-up resistor for button
+
+    Serial.println("Press the button to see output!");
+
+    // Initialize MPU6050
+    if (!mpu.begin()) {
+        Serial.println("MPU6050 not found! Check connections.");
+        while (1) delay(10);  // Halt execution if sensor is not found
+    }
+
+    Serial.println("MPU6050 Initialized!");
+}
+
+void loop() {
+    int buttonState = digitalRead(BUTTON_PIN); // Read button state
+
+    Serial.print("Button State: ");
+    Serial.println(buttonState); // Print 1 (not pressed) or 0 (pressed)
+
+    if (buttonState == LOW) {  // Button is pressed
+        Serial.println("Button Pressed! 🔴");  
+    }
+
+    delay(200);  // Small delay to avoid spamming
+}
