@@ -75,14 +75,6 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             
-            # Bullet creation: when space is pressed, fire a bullet.
-            if game_state == "playing" and event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    # Create bullet from center of the player using last_direction.
-                    bullet_x = player.x + player.draw_width // 2
-                    bullet_y = player.y + player.draw_height // 2
-                    new_bullet = Bullet(bullet_x, bullet_y, last_direction, speed=10)
-                    bullets.append(new_bullet)
             
             if game_state in ("win", "gameover") and event.type == pygame.MOUSEBUTTONDOWN:
                 if restart_button.collidepoint(event.pos):
