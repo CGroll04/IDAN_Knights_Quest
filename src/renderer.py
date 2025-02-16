@@ -1,6 +1,9 @@
 # src/renderer.py
 
 import pygame
+import random
+from utils import MAIN_AREA
+from objects import Coin
 
 def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex,
                 door_closed_img, door_open_img, coin_img,
@@ -69,3 +72,25 @@ def render_gameover_screen(screen, bg_image, levels_passed, restart_button_rect,
     screen.blit(button_text, btn_text_rect)
     
     pygame.display.flip()
+
+def create_coins_in_area(coin_positions, walls, coin_width=20, coin_height=20):
+    """Creates coins ensuring they are within MAIN_AREA."""
+    coins = []
+    for pos in coin_positions:
+        x, y = pos
+        x = max(MAIN_AREA.left, min(x, MAIN_AREA.right - coin_width))
+        y = max(MAIN_AREA.top, min(y, MAIN_AREA.bottom - coin_height))
+        coin_rect = pygame.Rect(x, y, coin_width, coin_height)
+        collision = any(coin_rect.colliderect(wall) for wall in walls)
+        attempts = 0
+        while collision and attempts < 100:
+            x = random.randint(MAIN_AREA.left, MAIN_AREA.right - coin_width)
+            y = random.randint(MAIN_AREA.top, MAIN_AREA.bottom - coin_height)
+            coin_rect = pygame.Rect(x, y, coin_width, coin_height)
+            collision = any(coin_rect.colliderect(wall) for wall in walls)
+            attempts += 1
+        if collision:
+            print(f"Skipping coin at {pos} after {attempts} attempts.")
+            continue
+        coins.append(Coin(x, y, coin_width, coin_height))
+    return coins
