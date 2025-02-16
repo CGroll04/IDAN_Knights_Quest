@@ -1,0 +1,127 @@
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <math.h>
+
+#define BUTTON_PIN 10  // Button connected to digital pin 10
+
+Adafruit_MPU6050 mpu;
+
+// Variables to store calibrated zero positions for roll and pitch
+float zeroRoll = 0.0;
+float zeroPitch = 0.0;
+
+// Calculate roll in degrees using accelerometer data
+float calculateRoll(sensors_event_t a) {
+  // roll = atan2(acceleration.y, acceleration.z)
+  return atan2(a.acceleration.y, a.acceleration.z) * 180.0 / PI;
+}
+
+// Calculate pitch in degrees using accelerometer data
+float calculatePitch(sensors_event_t a) {
+  // pitch = atan2(-acceleration.x, sqrt(acceleration.y^2 + acceleration.z^2))
+  return atan2(-a.acceleration.x, sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180.0 / PI;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);  // Enable internal pull-up resistor
+
+  // Initialize MPU6050
+  if (!mpu.begin()) {
+    Serial.println("MPU6050 not found! Check connections.");
+    while (1) { delay(10); }
+  }
+
+  // Configure sensor ranges (adjust if needed)
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  // Allow sensor to stabilize
+  delay(100);
+
+  // Calibrate zero position for both roll and pitch
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  zeroRoll = calculateRoll(a);
+  zeroPitch = calculatePitch(a);
+  
+  Serial.print("Calibrated zero roll angle: ");
+  Serial.println(zeroRoll);
+  Serial.print("Calibrated zero pitch angle: ");
+  Serial.println(zeroPitch);
+}
+
+void loop() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  // Calculate current roll and pitch angles
+  float currentRoll = calculateRoll(a);
+  float currentPitch = calculatePitch(a);
+  
+  // Calculate differences from the calibrated zero position
+  float deltaRoll = currentRoll - zeroRoll;
+  float deltaPitch = currentPitch - zeroPitch;
+
+  // Set a threshold (in degrees) for significant tilt
+  float threshold = 10.0;
+
+  // Variables to hold directional strings
+  String verticalDirection = "";
+  String horizontalDirection = "";
+  bool verticalActive = false;
+  bool horizontalActive = false;
+
+  // Determine vertical movement based on pitch
+  if (abs(deltaPitch) > threshold) {
+    if (deltaPitch > threshold) {
+      verticalDirection = "DOWN";
+    } else if (deltaPitch < -threshold) {
+      verticalDirection = "UP";
+    }
+    verticalActive = true;
+  }
+
+  // Determine horizontal movement based on roll
+  if (abs(deltaRoll) > threshold) {
+    if (deltaRoll > threshold) {
+      horizontalDirection = "LEFT";
+    } else if (deltaRoll < -threshold) {
+      horizontalDirection = "RIGHT";
+    }
+    horizontalActive = true;
+  }
+
+  // Combine vertical and horizontal directions for diagonal movement
+  String direction = "STRAIGHT";
+  if (verticalActive && horizontalActive) {
+    direction = verticalDirection + "-" + horizontalDirection; // e.g., "DOWN-LEFT"
+  } else if (verticalActive) {
+    direction = verticalDirection;
+  } else if (horizontalActive) {
+    direction = horizontalDirection;
+  }
+
+  // Read button state (1 = not pressed, 0 = pressed)
+  int buttonState = digitalRead(BUTTON_PIN);
+
+  // Compute angular velocity magnitude from gyroscope data (in rad/s)
+  float angularVelocity = sqrt(g.gyro.x * g.gyro.x +
+                               g.gyro.y * g.gyro.y +
+                               g.gyro.z * g.gyro.z);
+
+  // Output format: buttonState,currentRoll,currentPitch,angularVelocity,direction
+  Serial.print(buttonState);
+  Serial.print(",");
+  Serial.print(currentRoll);
+  Serial.print(",");
+  Serial.print(currentPitch);
+  Serial.print(",");
+  Serial.print(angularVelocity);
+  Serial.print(",");
+  Serial.println(direction);
+
+  delay(100);
+}
