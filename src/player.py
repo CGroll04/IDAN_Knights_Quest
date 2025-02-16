@@ -1,19 +1,17 @@
-# src/player.py
-
 import pygame
 
 class Player:
     def __init__(self, x, y):
         # Load the knight image
         self.image = pygame.image.load("assets/knight.png").convert_alpha()
-        # Optionally, scale the image to a desired size (for example, 50x50)
+        # Optionally, scale the image to a desired size (for example, 55x50)
         self.image = pygame.transform.scale(self.image, (55, 50))
         self.x = x
         self.y = y
         self.width = self.image.get_width()
         self.height = self.image.get_height()
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
-        self.speed = 5
+        self.speed = 10  # Increased speed from 5 to 10
 
     def move(self, direction_vector):
         dx, dy = direction_vector
