@@ -1,16 +1,30 @@
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include <math.h>
 
 #define BUTTON_PIN 10  // Button connected to digital pin 10
 
 Adafruit_MPU6050 mpu;
 
+// This variable will store our baseline (zero) roll angle.
+float zeroRoll = 0.0;
+
+// Helper function to calculate roll angle (in degrees) from accelerometer data.
+// This assumes that the sensor is mounted such that rolling (tilting left/right)
+// primarily affects the Y and Z acceleration values.
+float calculateRoll(sensors_event_t a) {
+  // Use atan2 to get roll in radians then convert to degrees.
+  // Formula: roll = atan2(accel_y, accel_z)
+  float roll = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
+  return roll;
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON_PIN, INPUT_PULLUP);  // Enable internal pull-up resistor
 
-  // Initialize the MPU6050
+  // Initialize MPU6050
   if (!mpu.begin()) {
     Serial.println("MPU6050 not found! Check connections.");
     while (1) { delay(10); }
@@ -21,42 +35,46 @@ void setup() {
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
-  Serial.println("MPU6050 Initialized!");
+  // Wait a moment for sensor to stabilize
+  delay(100);
+
+  // Calibrate zero position (store the current roll as zero)
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  zeroRoll = calculateRoll(a);
+  Serial.print("Calibrated zero roll angle: ");
+  Serial.println(zeroRoll);
 }
 
 void loop() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  
+  // Calculate the current roll angle
+  float currentRoll = calculateRoll(a);
+  // Determine how far the sensor has moved from the zero position
+  float deltaRoll = currentRoll - zeroRoll;
+
+  // Set a threshold (in degrees) for significant tilt
+  float threshold = 10.0;  // You can adjust this value as needed
+
+  // Determine the direction based on the difference in angle
+  String direction = "STRAIGHT";
+  if (deltaRoll > threshold) {
+    direction = "LEFT";
+  } else if (deltaRoll < -threshold) {
+    direction = "RIGHT";
+  }
+
   // Read button state (1 = not pressed, 0 = pressed)
   int buttonState = digitalRead(BUTTON_PIN);
 
-  // Read gyroscope data
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  // Define a threshold for significant rotation (in rad/s)
-  float threshold = 0.3;  // You might need to adjust this based on testing
-
-  // Determine direction based on gyroscope readings
-  String direction = "STRAIGHT";
-
-  // Compare the X and Y axis values to determine the dominant rotation
-  if (abs(g.gyro.x) > abs(g.gyro.y)) {
-    if (g.gyro.x > threshold) {
-      direction = "RIGHT";
-    } else if (g.gyro.x < -threshold) {
-      direction = "LEFT";
-    }
-  } else {
-    if (g.gyro.y > threshold) {
-      direction = "DOWN";
-    } else if (g.gyro.y < -threshold) {
-      direction = "UP";
-    }
-  }
-
-  // Output the button state and direction, separated by a comma
+  // Output the button state, current roll angle, and the determined direction
   Serial.print(buttonState);
+  Serial.print(",");
+  Serial.print(currentRoll);
   Serial.print(",");
   Serial.println(direction);
 
-  delay(100);  // Adjust delay to control output speed
+  delay(100);
 }
