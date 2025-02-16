@@ -5,7 +5,7 @@ import random
 from level_manager import LevelManager
 from player import Player  # Player now loads knight.png
 from objects import Coin, Door
-from input_handler_keyboard import get_input
+from input_handler import get_input
 from utils import Timer
 
 # Window dimensions
@@ -183,7 +183,7 @@ def create_coins(coin_positions, walls, coin_width=20, coin_height=20):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("IDAN Pong: Your New Adventure")
+    pygame.display.set_caption("IDAN Knight's Quest")
     clock = pygame.time.Clock()
     
     # Load and scale the background image to 800x600
