@@ -12,19 +12,20 @@ from utils import Timer
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
-def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex, door_closed_img, door_open_img, player, coins, door, timer, walls):
+def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex, door_closed_img, door_open_img, coin_img, player, coins, door, timer, walls):
     """
-    Renders the scene.
-      - bg_image: Scaled background image (800x600).
-      - vert_wall_tex: Texture for vertical walls.
-      - horiz_wall_tex: Texture for horizontal walls.
-      - door_closed_img, door_open_img: Images for closed and open door states.
-      - walls: List of pygame.Rect objects defining wall positions/sizes.
+    Renders the current gameplay scene:
+      - Background image stretched to fill the screen.
+      - Walls are filled with the proper texture.
+      - Coins are drawn using coin_img.
+      - Door shows closed or open image.
+      - Player is drawn using the knight image.
+      - Level timer is drawn.
     """
-    # Draw background
+    # Draw the background
     screen.blit(bg_image, (0, 0))
     
-    # Render walls with proper texture (vertical or horizontal)
+    # Render walls
     for wall in walls:
         if wall.width < wall.height:
             texture = vert_wall_tex
@@ -33,18 +34,18 @@ def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex, door_closed_img
         scaled_wall = pygame.transform.scale(texture, (wall.width, wall.height))
         screen.blit(scaled_wall, (wall.x, wall.y))
     
-    # Draw coins as yellow squares
+    # Render coins using coin image (scaled to coin size)
     for coin in coins:
         if not coin.collected:
-            pygame.draw.rect(screen, (255, 255, 0), (coin.x, coin.y, coin.width, coin.height))
+            scaled_coin = pygame.transform.scale(coin_img, (coin.width, coin.height))
+            screen.blit(scaled_coin, (coin.x, coin.y))
     
-    # Draw door: Use door_open_img if unlocked; door_closed_img if locked.
-    # We'll scale the door image to 50x80.
+    # Render door image (open if unlocked, closed if locked)
     door_image = door_open_img if not door.is_locked else door_closed_img
     scaled_door = pygame.transform.scale(door_image, (50, 80))
     screen.blit(scaled_door, (door.x, door.y))
     
-    # Draw player (blue square)
+    # Draw the player (knight image is drawn in Player.draw)
     player.draw(screen)
     
     # Draw the current level timer
@@ -56,10 +57,9 @@ def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex, door_closed_img
 
 def render_win_screen(screen, bg_image, total_time, restart_button_rect):
     """
-    Renders the win screen with total time and a restart button.
+    Renders the win screen when all levels are complete.
     """
     screen.blit(bg_image, (0, 0))
-    
     font = pygame.font.SysFont(None, 48)
     win_text = font.render("You Win!", True, (255, 255, 255))
     time_text = font.render(f"Total Time: {int(total_time)} seconds", True, (255, 255, 255))
@@ -77,10 +77,33 @@ def render_win_screen(screen, bg_image, total_time, restart_button_rect):
     
     pygame.display.flip()
 
+def render_gameover_screen(screen, bg_image, levels_passed, restart_button_rect):
+    """
+    Renders the game over screen when time runs out.
+    Displays "Time Ran Out", the number of levels passed, and a restart button.
+    """
+    screen.blit(bg_image, (0, 0))
+    font = pygame.font.SysFont(None, 48)
+    over_text = font.render("Time Ran Out!", True, (255, 0, 0))
+    levels_text = font.render(f"Levels Passed: {levels_passed}", True, (255, 255, 255))
+    
+    over_rect = over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+    levels_rect = levels_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    screen.blit(over_text, over_rect)
+    screen.blit(levels_text, levels_rect)
+    
+    pygame.draw.rect(screen, (0, 0, 255), restart_button_rect)
+    button_font = pygame.font.SysFont(None, 36)
+    button_text = button_font.render("Restart", True, (255, 255, 255))
+    btn_text_rect = button_text.get_rect(center=restart_button_rect.center)
+    screen.blit(button_text, btn_text_rect)
+    
+    pygame.display.flip()
+
 def create_coins(coin_positions, walls, coin_width=20, coin_height=20):
     """
-    Create Coin objects from given positions.
-    If a coin collides with a wall, reposition it up to 100 times.
+    Creates Coin objects from a list of positions.
+    If a coin spawns inside a wall, it attempts to reposition it up to 100 times.
     """
     coins = []
     for pos in coin_positions:
@@ -106,7 +129,7 @@ def main():
     pygame.display.set_caption("IDAN Pong: Your New Adventure")
     clock = pygame.time.Clock()
     
-    # Load and stretch background image (assumed to be 80x80) to 800x600
+    # Load and stretch the background image to 800x600
     original_bg = pygame.image.load("assets/background.png").convert()
     bg_image = pygame.transform.scale(original_bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
     
@@ -118,11 +141,15 @@ def main():
     door_closed_img = pygame.image.load("assets/door_closed.png").convert_alpha()
     door_open_img = pygame.image.load("assets/door_open.png").convert_alpha()
     
+    # Load coin image
+    coin_img = pygame.image.load("assets/coin.png").convert_alpha()
+    
     # Game state variables
-    game_state = "playing"  # "playing" or "win"
+    # game_state can be "playing", "win", or "gameover"
+    game_state = "playing"
     total_time = 0.0
     
-    # Initialize level manager and get current level data
+    # Initialize level manager and current level
     level_manager = LevelManager()
     current_level = level_manager.get_current_level()
     
@@ -133,19 +160,22 @@ def main():
     door = Door(*current_level["door"])
     timer = Timer(current_level["time_limit"])
     
-    # Define a restart button rectangle for the win screen
-    restart_button = pygame.Rect(SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 50, 120, 50)
+    # Define a restart button rectangle for win and gameover screens
+    restart_button = pygame.Rect(SCREEN_WIDTH//2 - 60, SCREEN_HEIGHT//2 + 50, 120, 50)
     
     running = True
     while running:
-        delta_time = clock.get_time() / 1000.0  # in seconds
+        delta_time = clock.get_time() / 1000.0  # seconds elapsed since last tick
+        
+        # Only accumulate total time in playing state
         if game_state == "playing":
             total_time += delta_time
-
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if game_state == "win" and event.type == pygame.MOUSEBUTTONDOWN:
+            # Restart on win or gameover screen when restart button is clicked
+            if game_state in ("win", "gameover") and event.type == pygame.MOUSEBUTTONDOWN:
                 if restart_button.collidepoint(event.pos):
                     level_manager.reset()
                     current_level = level_manager.get_current_level()
@@ -165,7 +195,7 @@ def main():
             if direction_vector != (0, 0):
                 player.move(direction_vector)
             
-            # Check wall collisions; revert movement if needed.
+            # Wall collision detection: if collision, revert to previous position.
             for wall in walls:
                 if player.rect.colliderect(wall):
                     player.x, player.y = prev_x, prev_y
@@ -188,7 +218,7 @@ def main():
                 if not coin.collected and coin.check_collision(player):
                     coin.collect()
             
-            # Unlock door if all coins are collected
+            # If all coins are collected, unlock the door
             if all(coin.collected for coin in coins):
                 door.unlock()
             
@@ -207,12 +237,9 @@ def main():
                     door.lock()
                     timer.reset(current_level["time_limit"])
             
-            # Update timer; if time runs out, reset coins and door
+            # Update the level timer; if time runs out, switch to game over state.
             if timer.update(delta_time):
-                for coin in coins:
-                    coin.collected = False
-                door.lock()
-                timer.reset(current_level["time_limit"])
+                game_state = "gameover"
             
             render_game(
                 screen,
@@ -221,6 +248,7 @@ def main():
                 horizontal_wall_texture,
                 door_closed_img,
                 door_open_img,
+                coin_img,
                 player,
                 coins,
                 door,
@@ -230,6 +258,23 @@ def main():
         
         elif game_state == "win":
             render_win_screen(screen, bg_image, total_time, restart_button)
+        
+        elif game_state == "gameover":
+            # Render a game over screen: "Time Ran Out", display levels passed, and restart button.
+            font = pygame.font.SysFont(None, 48)
+            over_text = font.render("Time Ran Out!", True, (255, 0, 0))
+            levels_text = font.render(f"Levels Passed: {level_manager.current_level_index}", True, (255, 255, 255))
+            over_rect = over_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
+            levels_rect = levels_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
+            screen.blit(bg_image, (0, 0))
+            screen.blit(over_text, over_rect)
+            screen.blit(levels_text, levels_rect)
+            pygame.draw.rect(screen, (0, 0, 255), restart_button)
+            button_font = pygame.font.SysFont(None, 36)
+            button_text = button_font.render("Restart", True, (255, 255, 255))
+            btn_text_rect = button_text.get_rect(center=restart_button.center)
+            screen.blit(button_text, btn_text_rect)
+            pygame.display.flip()
         
         clock.tick(30)
     pygame.quit()
