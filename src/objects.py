@@ -1,22 +1,21 @@
 # src/objects.py
-import pygame  # We'll use pygame's Rect for simple collision checks
+import pygame
 
 class Coin:
-    def __init__(self, x, y):
+    def __init__(self, x, y, width=20, height=20):
         self.x = x
         self.y = y
+        self.width = width
+        self.height = height
         self.collected = False
-        self.radius = 10  # Used for drawing and collision detection
 
     def collect(self):
         self.collected = True
 
     def check_collision(self, player):
-        # Create a circle for the coin and a rect for the player
-        coin_rect = pygame.Rect(self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
-        player_rect = pygame.Rect(player.x, player.y, 40, 40)  # Same size as drawn in main.py
-        return coin_rect.colliderect(player_rect)
-
+        # Create a rect for the coin and check collision with the player's rect
+        coin_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+        return coin_rect.colliderect(player.rect)
 
 class Door:
     def __init__(self, x, y):
@@ -31,6 +30,6 @@ class Door:
         self.is_locked = True
 
     def check_collision(self, player):
+        # Define door dimensions (50x80 as before)
         door_rect = pygame.Rect(self.x, self.y, 50, 80)
-        player_rect = pygame.Rect(player.x, player.y, 40, 40)
-        return door_rect.colliderect(player_rect)
+        return door_rect.colliderect(player.rect)
