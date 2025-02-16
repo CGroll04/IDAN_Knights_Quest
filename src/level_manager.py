@@ -6,55 +6,57 @@ class LevelManager:
         # - "player_start": (x, y)
         # - "coins": list of (x, y) positions
         # - "door": (x, y)
-        # - "time_limit": int
+        # - "time_limit": int (in seconds)
         # - "walls": list of (x, y, width, height)
+        #
+        # All coordinates should be inside the main area.
         self.levels = [
-            # Level 1: A simple open area
+            # Level 1: A simple open area (longer time)
             {
-                "player_start": (50, 50),
-                "coins": [(150, 100), (300, 200), (500, 150)],
+                "player_start": (100, 100),
+                "coins": [(150, 150), (300, 200), (500, 150)],
                 "door": (700, 500),
-                "time_limit": 30,
+                "time_limit": 20,  # Longer time for the first level
                 "walls": [
-                    (100, 100, 200, 20),   # horizontal wall
-                    (400, 300, 20, 200)    # vertical wall
+                    (100, 80, 200, 20),
+                    (400, 300, 20, 150)
                 ]
             },
             # Level 2: A semi-maze layout
             {
-                "player_start": (50, 300),
-                "coins": [(120, 250), (350, 100), (600, 300), (400, 400)],
-                "door": (750, 50),
-                "time_limit": 40,
+                "player_start": (100, 350),
+                "coins": [(120, 320), (350, 150), (600, 350), (400, 400)],
+                "door": (700, 100),
+                "time_limit": 30,
                 "walls": [
-                    (200, 200, 400, 20),   # long horizontal wall
-                    (200, 200, 20, 200),   # left vertical block
-                    (580, 200, 20, 200)    # right vertical block
+                    (200, 250, 400, 20),
+                    (200, 250, 20, 150),
+                    (580, 250, 20, 150)
                 ]
             },
             # Level 3: Vertical walls forming corridors
             {
-                "player_start": (50, 300),
+                "player_start": (100, 350),
                 "coins": [
-                    (150, 250), (150, 350),  # coins in the left corridor
-                    (350, 250), (350, 350)   # coins in the right corridor
+                    (150, 320), (150, 380),
+                    (350, 320), (350, 380)
                 ],
-                "door": (700, 300),
-                "time_limit": 50,
+                "door": (700, 350),
+                "time_limit": 30,
                 "walls": [
-                    (250, 200, 20, 200),  # vertical wall
-                    (450, 200, 20, 200)   # another vertical wall
+                    (250, 300, 20, 150),
+                    (450, 300, 20, 150)
                 ]
             },
-            # Level 4: A central split wall; door y-coordinate adjusted to 520
+            # Level 4: A central split wall layout
             {
-                "player_start": (400, 50),
+                "player_start": (400, 100),
                 "coins": [(320, 150), (480, 150), (320, 350), (480, 350)],
-                "door": (400, 520),  # Changed from (400,550) to (400,520) so the door fits
-                "time_limit": 60,
+                "door": (400, 520),
+                "time_limit": 30,
                 "walls": [
-                    (200, 300, 150, 20),  # left segment
-                    (400, 300, 200, 20)   # right segment
+                    (200, 300, 150, 20),
+                    (400, 300, 200, 20)
                 ]
             }
         ]
