@@ -7,7 +7,7 @@ from objects import Coin
 
 def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex,
                 door_closed_img, door_open_img, coin_img,
-                player, coins, door, timer, walls, obstacles):
+                player, coins, door, timer, walls, obstacles, bullets):
     screen.blit(bg_image, (0, 0))
     
     for wall in walls:
@@ -26,6 +26,9 @@ def render_game(screen, bg_image, vert_wall_tex, horiz_wall_tex,
     
     for obstacle in obstacles:
         obstacle.draw(screen)
+    
+    for bullet in bullets:  # <-- Added loop to draw bullets
+        bullet.draw(screen)
     
     player.draw(screen)
     

@@ -215,7 +215,8 @@ def main():
                 door,
                 timer,
                 walls,
-                obstacles
+                obstacles,
+                bullets
             )
         
         elif game_state == "win":

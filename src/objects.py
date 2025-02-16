@@ -33,8 +33,7 @@ class Bullet:
         self.rect.center = (self.x, self.y)
 
     def draw(self, surface):
-        # For debugging, uncomment the next line to see a red circle:
-        # pygame.draw.circle(surface, (255, 0, 0), (int(self.x), int(self.y)), self.radius)
+    # Comment out the image drawing for now:
         scaled_image = pygame.transform.scale(Bullet.fireball_image, (self.width, self.height))
         surface.blit(scaled_image, (self.rect.x, self.rect.y))
 
