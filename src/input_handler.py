@@ -107,4 +107,4 @@ def get_input():
                     return (dx, dy, fire)
         except Exception as e:
             print("Error reading serial input:", e)
-    return (0, 0, False)
+    return (0, 0)
