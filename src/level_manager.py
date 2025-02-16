@@ -46,11 +46,11 @@ class LevelManager:
                     (450, 200, 20, 200)   # another vertical wall
                 ]
             },
-            # Level 4: A central split wall
+            # Level 4: A central split wall; door y-coordinate adjusted to 520
             {
                 "player_start": (400, 50),
                 "coins": [(320, 150), (480, 150), (320, 350), (480, 350)],
-                "door": (400, 550),
+                "door": (400, 520),  # Changed from (400,550) to (400,520) so the door fits
                 "time_limit": 60,
                 "walls": [
                     (200, 300, 150, 20),  # left segment
