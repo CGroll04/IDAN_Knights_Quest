@@ -1,3 +1,5 @@
+# src/input_handler_serial.py
+
 import serial
 import time
 import math
@@ -16,85 +18,93 @@ baseline_set = False
 baseline_roll = 0.0
 baseline_pitch = 0.0
 
+# Global variable for button edge detection.
+prev_button_state = 1  # 1 means "not pressed" by default.
+
 def clamp(val, min_val, max_val):
     """Clamp val to the range [min_val, max_val]."""
     return max(min(val, max_val), min_val)
 
 def get_input():
     """
-    Reads serial input from the Arduino and returns a tuple (dx, dy) representing
-    the omnidirectional movement based on the sensor's tilt.
-    
+    Reads serial input from the Arduino and returns a tuple (dx, dy, fire) representing:
+      - (dx, dy): Omnidirectional movement vector (floats between -1 and 1) computed
+                  from the sensor's tilt (roll and pitch) relative to a calibrated baseline.
+      - fire: A boolean flag that is True on the edge when the button state changes
+              from not pressed (1) to pressed (0), triggering a bullet to fire.
+              
     Expected serial format:
       "button_state,roll_angle,pitch_angle,direction"
     For example: "1,1.10,0.24,STRAIGHT"
     
-    We ignore the button state and textual direction. Instead, we use the roll and pitch
-    angles (in degrees) to compute a movement vector.
-    
-    The first valid reading is used as the baseline (zero) value.
-    A deadzone is applied so that small deviations around the zero don't produce movement.
-    A tilt beyond the deadzone is scaled so that a tilt of max_angle (e.g. 30°) yields full movement (magnitude 1).
-    
-    Returns:
-      (dx, dy) where dx and dy are floats between -1 and 1.
+    The first valid reading is used as the baseline. A deadzone (2°) is applied so that
+    minor deviations don't produce movement. A tilt up to max_angle (30°) is scaled to a
+    movement vector with magnitude 1.
     """
-    global baseline_set, baseline_roll, baseline_pitch
-    
+    global baseline_set, baseline_roll, baseline_pitch, prev_button_state
+
     if ser and ser.in_waiting > 0:
         try:
-            # Read one line from the serial port and decode it.
             line = ser.readline().decode('utf-8').strip()
             if line:
                 parts = line.split(',')
                 if len(parts) >= 3:
+                    # Parse button state from the first field.
                     try:
-                        # Parse the roll and pitch values from the serial output.
+                        button_state = int(parts[0])
+                    except ValueError:
+                        button_state = 1  # Default to not pressed.
+                    
+                    # Edge detection: fire if the state changes from 1 to 0.
+                    fire = False
+                    if prev_button_state == 1 and button_state == 0:
+                        fire = True
+                    prev_button_state = button_state
+
+                    # Parse roll and pitch values.
+                    try:
                         raw_roll = float(parts[1])
                         raw_pitch = float(parts[2])
                     except ValueError:
-                        return (0, 0)
-                    
-                    # Set baseline from the first valid reading.
+                        return (0, 0, fire)
+
+                    # Set baseline on first valid reading.
                     if not baseline_set:
                         baseline_roll = raw_roll
                         baseline_pitch = raw_pitch
                         baseline_set = True
-                        
+
                     # Compute deltas relative to the baseline.
                     delta_roll = raw_roll - baseline_roll
                     delta_pitch = raw_pitch - baseline_pitch
-                    
-                    # Apply a deadzone (in degrees) to filter out minor noise.
+
+                    # Apply a deadzone (in degrees).
                     deadzone = 2.0
-                    magnitude = math.sqrt(delta_roll**2 + delta_pitch**2)
+                    magnitude = math.sqrt(delta_roll ** 2 + delta_pitch ** 2)
                     if magnitude < deadzone:
-                        return (0, 0)
-                    
-                    # Define the maximum tilt (in degrees) corresponding to full movement.
+                        return (0, 0, fire)
+
+                    # Maximum tilt (in degrees) corresponding to full movement.
                     max_angle = 30.0
-                    # Scale the effective magnitude between 0 and 1.
                     effective_magnitude = (magnitude - deadzone) / (max_angle - deadzone)
                     effective_magnitude = clamp(effective_magnitude, 0, 1)
-                    
-                    # Determine the movement direction.
-                    # According to our convention:
-                    #   - For horizontal: positive delta_roll means sensor tilted left -> move left (dx negative).
-                    #   - For vertical: positive delta_pitch means sensor tilted forward -> move down (dy positive).
-                    # Compute the unit vector from the delta.
-                    dx = -delta_roll  # Invert so that left tilt gives negative dx.
+
+                    # Compute movement direction.
+                    # Convention: positive delta_roll (tilt left) → move left (dx negative),
+                    #             positive delta_pitch (tilt forward) → move down (dy positive).
+                    dx = -delta_roll  # Invert so left tilt gives negative dx.
                     dy = delta_pitch
-                    norm = math.sqrt(dx**2 + dy**2)
+                    norm = math.sqrt(dx ** 2 + dy ** 2)
                     if norm == 0:
-                        return (0, 0)
+                        return (0, 0, fire)
                     dx /= norm
                     dy /= norm
-                    
-                    # Multiply by the effective magnitude to get the final movement vector.
+
+                    # Scale the unit vector by the effective magnitude.
                     dx *= effective_magnitude
                     dy *= effective_magnitude
-                    
-                    return (dx, dy)
+
+                    return (dx, dy, fire)
         except Exception as e:
             print("Error reading serial input:", e)
-    return (0, 0)
+    return (0, 0, False)
